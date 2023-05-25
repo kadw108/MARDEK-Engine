@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: BlurMaterial
+  m_Name: BlurMaterial_LargeBlur
   m_Shader: {fileID: 4800000, guid: e171761f55545b24dac13a1d41376c87, type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
@@ -69,7 +69,7 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Size: 5
+    - _Size: 6
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
