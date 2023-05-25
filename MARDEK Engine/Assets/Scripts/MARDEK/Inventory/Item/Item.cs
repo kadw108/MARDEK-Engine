@@ -41,6 +41,11 @@ namespace MARDEK.Inventory
             return "";
         }
 
+        protected static string NewProperty(string str)
+        {
+            return "• " + str + "\n";
+        }
+
         /**
          * The color that will be used to display the type of item this is when the player is in the battle loot
          * menu or the treasure chest menu.

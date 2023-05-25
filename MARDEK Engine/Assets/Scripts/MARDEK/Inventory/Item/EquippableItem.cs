@@ -66,7 +66,7 @@ namespace MARDEK.Inventory
                 {
                     if (candidateStat.statusEnum.name.Equals(importantStatName))
                     {
-                        result += importantStatName + ": " + candidateStat.Value + "\n";
+                        result += NewProperty(importantStatName + ": " + candidateStat.Value);
                     }
                 }
             }
@@ -76,9 +76,19 @@ namespace MARDEK.Inventory
         protected override string CreateProperties()
         {
             string result = "";
+
             // TODO Evasion and Hit
+
             result += CreateStatsString(new string[]{"ATK", "CRIT", "DEF", "MDEF"});
-            if (!this.element.name.Equals("Normal")) result += this.element.name.ToUpper() + " Elemental\n";
+
+            if (!this.element.name.Equals("Normal"))
+            {
+                if (!this.element.name.Equals("Non-Elemental"))
+                    result += NewProperty(this.element.name.ToUpper() + " Elemental");
+                else
+                    result += NewProperty(this.element.name.ToUpper());
+            }
+
             result += CreateStatsString(new string[]{"AGL", "SPR", "STR", "VIT"});
             result += CreateStatsString(new string[]{"MaxHP", "MaxMP"});
             result += CreateStatsString(new string[]{"FireResistance"}); 
@@ -91,7 +101,9 @@ namespace MARDEK.Inventory
             result += CreateStatsString(new string[]{"FigResistance"});  
             result += CreateStatsString(new string[]{"PhysicalResistance"});  
             result += CreateStatsString(new string[]{"ThaumaResistance"}); 
+
         // TODO Automatic status effects
+
             return result;
         }
 
