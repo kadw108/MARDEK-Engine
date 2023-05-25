@@ -2242,10 +2242,6 @@ PrefabInstance:
       propertyPath: party
       value: 
       objectReference: {fileID: 7970277371122817805}
-    - target: {fileID: 4934515989561492841, guid: 232e2963de121e3459437b2b03d1118e, type: 3}
-      propertyPath: m_AnchoredPosition.y
-      value: 1.3209991
-      objectReference: {fileID: 0}
     - target: {fileID: 5047553136555303019, guid: 232e2963de121e3459437b2b03d1118e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1

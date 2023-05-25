@@ -62,8 +62,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   backgroundImage: {fileID: 4391250642691433687}
   characterImage: {fileID: 5646076205863093304}
-  baseSlotSprite: {fileID: 21300000, guid: fa6064150488dbe4db891ada112d4867, type: 3}
-  hoverSlotSprite: {fileID: 21300000, guid: 067d39d2749f5fa459eedd297bf92530, type: 3}
+  baseSlotSprite: {fileID: 3286163911610860551, guid: f8d1ab241fc64d741a8f95c602828a0b, type: 3}
+  hoverSlotSprite: {fileID: 3286163911610860551, guid: 42673f37d7bd73d4f9138a92bc398ad7, type: 3}
   transparentSprite: {fileID: 21300000, guid: c57170930d7e74b42a80f7e31cef8dd0, type: 3}
 --- !u!1 &3012851634029989940
 GameObject:
@@ -131,7 +131,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: fa6064150488dbe4db891ada112d4867, type: 3}
+  m_Sprite: {fileID: 3286163911610860551, guid: f8d1ab241fc64d741a8f95c602828a0b, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
