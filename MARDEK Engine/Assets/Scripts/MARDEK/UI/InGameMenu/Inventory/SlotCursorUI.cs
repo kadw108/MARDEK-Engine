@@ -13,7 +13,10 @@ namespace MARDEK.UI
 
         void Update()
         {
-            this.transform.position = new Vector2(Mouse.current.position.x.ReadValue(), Mouse.current.position.y.ReadValue());
+            Vector2 screenPosition = new Vector2(Mouse.current.position.x.ReadValue(), Mouse.current.position.y.ReadValue());
+            Vector2 worldPosition = Camera.main.ScreenToWorldPoint(screenPosition);
+            this.transform.position = worldPosition;
+
             if (SlotCursor.instance.IsEmpty())
             {
                 this.itemImage.sprite = transparentSprite;
