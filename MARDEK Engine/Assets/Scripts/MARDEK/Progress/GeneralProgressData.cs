@@ -1,19 +1,22 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using FullSerializer;
 
 using MARDEK.Core;
+using MARDEK.CharacterSystem;
+using MARDEK.Save;
 
-namespace MARDEK.Save
+namespace MARDEK.Progress
 {
+
     public class GeneralProgressData : AddressableMonoBehaviour
     {
-
         [SerializeField] public string currentScene = default;
         [SerializeField] string _gameName = string.Empty;
         [SerializeField] public string sceneName { get; private set; } = string.Empty;
         [SerializeField] public DateTime savedTime { get; private set; } = new DateTime();
+        [SerializeField] public List<CharacterProfile> profiles { get; private set; } = new();
         
         public string GameName
         {
@@ -36,6 +39,15 @@ namespace MARDEK.Save
 
             sceneName = SceneInfo.CurrentSceneInfoDisplayName;
             savedTime = DateTime.Now;
+
+            if (Party.Instance != null)
+            {
+                profiles = new();
+                foreach (Character c in Party.Instance.Characters)
+                {
+                    profiles.Add(c.Profile);
+                }
+            }
 
             base.Save();
         }

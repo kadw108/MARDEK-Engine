@@ -9,6 +9,9 @@ namespace MARDEK.UI
 
         public void SetCharacter(Character character)
         {
+            if (character == null || character.Profile == null)
+                return;
+
             portrait.SetPortrait(character.Profile.portrait);
         }
     }

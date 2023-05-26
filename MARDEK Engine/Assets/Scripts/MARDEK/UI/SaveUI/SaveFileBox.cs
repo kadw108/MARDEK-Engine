@@ -12,7 +12,6 @@ namespace MARDEK.UI
     public class SaveFileBox : MonoBehaviour
     {
         [SerializeField] GeneralProgressData dummyGeneralProgressData;
-        [SerializeField] Party dummyPartyData;
 
         [SerializeField] GameObject saveFileInfo;
 
@@ -75,9 +74,6 @@ namespace MARDEK.UI
 
                 dummyGeneralProgressData.Load(saveState);
                 UpdateFromGeneralProgressData(dummyGeneralProgressData);
-
-                dummyPartyData.Load(saveState);
-                UpdateFromPartyProgressData(dummyPartyData);
             }
         }
 
@@ -92,19 +88,17 @@ namespace MARDEK.UI
             saveNameLabel.text = gpd.GameName;
             savedTimeLabel.text = gpd.savedTime.ToString("ddd dd/MMM/yyyy - HH:mmtt", System.Globalization.CultureInfo.InvariantCulture);
             sceneNameLabel.text = gpd.sceneName;
-        }
 
-        private void UpdateFromPartyProgressData(Party partyData)
-        {
-            if (partyData == null)
+            for (int i = 0; i < gpd.profiles.Count; i++)
             {
-                Debug.Log("Warning: Attempting to update SaveFileBox from null Party data");
-                return;
-            }
-
-            for (int i = 0; i < partyData.Characters.Count; i++)
-            {
-                portraitImages[i].SetPortrait(partyData.Characters[i].Profile.portrait);
+                if (gpd.profiles[i] != null)
+                {
+                    portraitImages[i].SetPortrait(gpd.profiles[i].portrait);
+                }
+                else
+                {
+                    portraitImages[i].SetPortrait(null);
+                }
             }
         }
     }

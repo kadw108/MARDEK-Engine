@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
-using MARDEK.Save;
+using MARDEK.Progress;
 
 namespace MARDEK.UI
 {
