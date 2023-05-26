@@ -26,4 +26,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Maps/DragonLair/DL_Area4.unity
     guid: 6febde95d7660a449b1ff57bbfa809ea
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: 653d9be99f70e93429e2978c7b80270e, type: 2}
+    com.unity.localization.settings: {fileID: 11400000, guid: 529093cbba678f54980dc500c0d5ec9d, type: 2}

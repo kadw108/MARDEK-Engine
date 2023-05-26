@@ -887,6 +887,7 @@ GameObject:
   - component: {fileID: 5364999534404584166}
   - component: {fileID: 1629039259552830554}
   - component: {fileID: 9152339911164301410}
+  - component: {fileID: 8477556698281099303}
   m_Layer: 5
   m_Name: Subtitle
   m_TagString: Untagged
@@ -1011,6 +1012,46 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!114 &8477556698281099303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7869471166699694950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56eb0353ae6e5124bb35b17aff880f16, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_StringReference:
+    m_TableReference:
+      m_TableCollectionName: GUID:84e00a8bed0ee814ba058adfa98e3300
+    m_TableEntryReference:
+      m_KeyId: 4031820349440
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  m_FormatArguments: []
+  m_UpdateString:
+    m_PersistentCalls:
+      m_Calls:
+      - m_Target: {fileID: 9152339911164301410}
+        m_TargetAssemblyTypeName: TMPro.TMP_Text, Unity.TextMeshPro
+        m_MethodName: set_text
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+  references:
+    version: 2
+    RefIds: []
 --- !u!1001 &1762859089321654719
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1397,6 +1438,10 @@ PrefabInstance:
       propertyPath: m_text
       value: New Game
       objectReference: {fileID: 0}
+    - target: {fileID: 7946025906802947963, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
+      propertyPath: m_StringReference.m_TableEntryReference.m_KeyId
+      value: 618348953600
+      objectReference: {fileID: 0}
     - target: {fileID: 9095848537721726252, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_Name
       value: NewGameButton
@@ -1544,6 +1589,10 @@ PrefabInstance:
       propertyPath: m_text
       value: Options
       objectReference: {fileID: 0}
+    - target: {fileID: 7946025906802947963, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
+      propertyPath: m_StringReference.m_TableEntryReference.m_KeyId
+      value: 3503094775808
+      objectReference: {fileID: 0}
     - target: {fileID: 9095848537721726252, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_Name
       value: Options
@@ -1685,6 +1734,10 @@ PrefabInstance:
     - target: {fileID: 7429239057509278293, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_text
       value: Quit
+      objectReference: {fileID: 0}
+    - target: {fileID: 7946025906802947963, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
+      propertyPath: m_StringReference.m_TableEntryReference.m_KeyId
+      value: 3661245202432
       objectReference: {fileID: 0}
     - target: {fileID: 9095848537721726252, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_Name
@@ -1849,6 +1902,10 @@ PrefabInstance:
       propertyPath: m_text
       value: Music Player
       objectReference: {fileID: 0}
+    - target: {fileID: 7946025906802947963, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
+      propertyPath: m_StringReference.m_TableEntryReference.m_KeyId
+      value: 3266070462464
+      objectReference: {fileID: 0}
     - target: {fileID: 9095848537721726252, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_Name
       value: MusicPlayer
@@ -1990,6 +2047,10 @@ PrefabInstance:
     - target: {fileID: 7429239057509278293, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_text
       value: Load Game
+      objectReference: {fileID: 0}
+    - target: {fileID: 7946025906802947963, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
+      propertyPath: m_StringReference.m_TableEntryReference.m_KeyId
+      value: 1775288991744
       objectReference: {fileID: 0}
     - target: {fileID: 9095848537721726252, guid: ff27de98e38eae948b6b9848443bc2ce, type: 3}
       propertyPath: m_Name
@@ -2261,6 +2322,18 @@ PrefabInstance:
     - target: {fileID: 2910517658167513444, guid: 05396ccbb0ed4704f961448753461bb2, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -150
+      objectReference: {fileID: 0}
+    - target: {fileID: 5980181479649165746, guid: 05396ccbb0ed4704f961448753461bb2, type: 3}
+      propertyPath: m_fontSize
+      value: 39.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 5980181479757639872, guid: 05396ccbb0ed4704f961448753461bb2, type: 3}
+      propertyPath: m_fontSize
+      value: 39.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 5980181481262489108, guid: 05396ccbb0ed4704f961448753461bb2, type: 3}
+      propertyPath: m_fontSize
+      value: 39.4
       objectReference: {fileID: 0}
     - target: {fileID: 7797503542209166337, guid: 05396ccbb0ed4704f961448753461bb2, type: 3}
       propertyPath: m_AnchorMax.x
