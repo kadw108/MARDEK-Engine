@@ -4,8 +4,8 @@ using TMPro;
 
 namespace MARDEK.CharacterSystem
 {
-    [CreateAssetMenu(menuName ="MARDEK/Character/CharacterVoice")]
-    public class CharacterVoice : AddressableScriptableObject
+    [CreateAssetMenu(menuName ="MARDEK/Character/CharacterFontOption")]
+    public class CharacterFontOption : AddressableScriptableObject
     {
         [field: SerializeField] public Color Color { get; private set; }
         [field: SerializeField] public TMP_FontAsset Font { get; private set; }

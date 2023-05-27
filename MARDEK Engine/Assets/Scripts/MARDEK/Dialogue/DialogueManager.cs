@@ -180,7 +180,7 @@ namespace MARDEK.DialogueSystem
                         characterNameText.rectTransform.anchoredPosition = new Vector2(50, -435);
                     }
 
-                    CharacterVoice overrideVoice = dialogue.CharacterLines[dialogueIndex].VoiceOverride;
+                    CharacterFontOption overrideVoice = dialogue.CharacterLines[dialogueIndex].VoiceOverride;
                     if (overrideVoice != null)
                     {
                         dialogueText.color = overrideVoice.Color;
@@ -188,16 +188,16 @@ namespace MARDEK.DialogueSystem
                         dialogueText.fontMaterial = overrideVoice.Material;
                         dialogueText.fontSize = overrideVoice.FontSize;
                     }
-                    else if (characterBio.voice != null)
+                    else if (characterBio.fontOption != null)
                     {
-                        dialogueText.color = characterBio.voice.Color;
-                        dialogueText.font = characterBio.voice.Font;
-                        dialogueText.fontMaterial = characterBio.voice.Material;
-                        dialogueText.fontSize = characterBio.voice.FontSize;
+                        dialogueText.color = characterBio.fontOption.Color;
+                        dialogueText.font = characterBio.fontOption.Font;
+                        dialogueText.fontMaterial = characterBio.fontOption.Material;
+                        dialogueText.fontSize = characterBio.fontOption.FontSize;
                     }
                     else
                     {
-                        Debug.Log("Character " + characterBio.displayName + " does not have a voice (font/color)!");
+                        Debug.Log("Character " + characterBio.displayName + " does not have a fontOption (font/color)!");
                     }
 
                     return;

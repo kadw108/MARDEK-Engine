@@ -162,7 +162,7 @@ namespace MARDEK.CharacterSystem
 
                     // these can be added later
                     /*
-                    Sprite voice = null;
+                    Sprite fontOption = null;
                     eye = SearchPortraitSprite(p.t + "_eye_" + p.face, portraitType.name);
 
                     Sprite elembg = null;
