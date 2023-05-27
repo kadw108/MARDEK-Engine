@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 927d99b98b7b3244d97c3b9a3fc9fb01, type: 3}
   m_Name: GdM_Dark
   m_EditorClassIdentifier: 
-  <Color>k__BackingField: {r: 0.23891245, g: 0, b: 0.2735849, a: 1}
+  <Color>k__BackingField: {r: 0.70068026, g: 0, b: 1, a: 1}
   <Font>k__BackingField: {fileID: 11400000, guid: 25a2fbfa89d94b4449eee247221baea2, type: 2}
   <Material>k__BackingField: {fileID: 2100000, guid: 983efc6e5be86c34fb0cc2f9fa931997, type: 2}
   <FontSize>k__BackingField: 50

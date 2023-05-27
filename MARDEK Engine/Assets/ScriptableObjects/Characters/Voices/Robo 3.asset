@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <Color>k__BackingField: {r: 0.8156863, g: 0.75686276, b: 0.5568628, a: 1}
   <Font>k__BackingField: {fileID: 11400000, guid: fe6c608c37600d540ab6bf2ba77b8540, type: 2}
-  <Material>k__BackingField: {fileID: -8454720809349601030, guid: fe6c608c37600d540ab6bf2ba77b8540, type: 2}
-  <FontSize>k__BackingField: 55
+  <Material>k__BackingField: {fileID: 2100000, guid: eac9eb4e382d8aa468adf0f11c443a7c, type: 2}
+  <FontSize>k__BackingField: 50
