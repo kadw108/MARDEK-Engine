@@ -16,6 +16,7 @@ namespace MARDEK.CharacterSystem
         [field: SerializeField] public StatsSet StartingStats { get; private set; } = new StatsSet();
         [field: SerializeField] public Element element { get; private set; }
         [field: SerializeField] public CharacterPortrait portrait { get; private set; }
+        [field: SerializeField] public CharacterVoice voice { get; private set; }
 
         [SerializeField] StatExpression MaxHPExpressionOveride;
         [SerializeField] StatExpression MaxMPExpressionOveride;

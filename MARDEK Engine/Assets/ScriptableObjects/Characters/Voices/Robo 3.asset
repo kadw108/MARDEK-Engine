@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 927d99b98b7b3244d97c3b9a3fc9fb01, type: 3}
+  m_Name: Robo 3
+  m_EditorClassIdentifier: 
+  <Color>k__BackingField: {r: 0.8156863, g: 0.75686276, b: 0.5568628, a: 1}
+  <Font>k__BackingField: {fileID: 11400000, guid: fe6c608c37600d540ab6bf2ba77b8540, type: 2}
+  <Material>k__BackingField: {fileID: -8454720809349601030, guid: fe6c608c37600d540ab6bf2ba77b8540, type: 2}
+  <FontSize>k__BackingField: 55

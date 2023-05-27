@@ -137,11 +137,11 @@ namespace MARDEK.DialogueSystem
                 return false;
             }
             lineIndex = -1;
-            UpdateCharacterName();
+            UpdateCharacterInfo();
             return AdvanceLine();
         }
 
-        private void UpdateCharacterName()
+        private void UpdateCharacterInfo()
         {
             if (dialogue != null)
             {
@@ -162,7 +162,6 @@ namespace MARDEK.DialogueSystem
 
                     if (characterBio.portrait != null)
                     {
-                        characterPortrait.gameObject.SetActive(true);
                         characterPortrait.SetPortrait(characterBio.portrait);
                         characterNameText.rectTransform.anchoredPosition = new Vector2(400, -435);
 
@@ -177,8 +176,28 @@ namespace MARDEK.DialogueSystem
                     }
                     else
                     {
-                        characterPortrait.gameObject.SetActive(false);
+                        characterPortrait.SetPortrait(null);
                         characterNameText.rectTransform.anchoredPosition = new Vector2(50, -435);
+                    }
+
+                    CharacterVoice overrideVoice = dialogue.CharacterLines[dialogueIndex].VoiceOverride;
+                    if (overrideVoice != null)
+                    {
+                        dialogueText.color = overrideVoice.Color;
+                        dialogueText.font = overrideVoice.Font;
+                        dialogueText.fontMaterial = overrideVoice.Material;
+                        dialogueText.fontSize = overrideVoice.FontSize;
+                    }
+                    else if (characterBio.voice != null)
+                    {
+                        dialogueText.color = characterBio.voice.Color;
+                        dialogueText.font = characterBio.voice.Font;
+                        dialogueText.fontMaterial = characterBio.voice.Material;
+                        dialogueText.fontSize = characterBio.voice.FontSize;
+                    }
+                    else
+                    {
+                        Debug.Log("Character " + characterBio.displayName + " does not have a voice (font/color)!");
                     }
 
                     return;
@@ -190,7 +209,7 @@ namespace MARDEK.DialogueSystem
         void EndDialogue()
         {
             ResetManager();
-            UpdateCharacterName();
+            UpdateCharacterInfo();
             UpdateUI();
             canvas.SetActive(false);
         }

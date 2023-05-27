@@ -13,3 +13,13 @@ MonoBehaviour:
   m_Name: Dragon's Lair Princess
   m_EditorClassIdentifier: 
   <displayName>k__BackingField: Princess
+  <displayClass>k__BackingField: 
+  <WalkSprites>k__BackingField: {fileID: 0}
+  <ActionSkillset>k__BackingField: {fileID: 0}
+  <StartingStats>k__BackingField:
+    intStats: []
+  <element>k__BackingField: {fileID: 0}
+  <portrait>k__BackingField: {fileID: 0}
+  <voice>k__BackingField: {fileID: 11400000, guid: 20c7d8db7daa4f54ba070578eb24f2ee, type: 2}
+  MaxHPExpressionOveride: {fileID: 0}
+  MaxMPExpressionOveride: {fileID: 0}

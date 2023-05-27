@@ -30,5 +30,6 @@ MonoBehaviour:
       _value: 12
   <element>k__BackingField: {fileID: 11400000, guid: 57ae7927a13bd1b479f4301ce3b69221, type: 2}
   <portrait>k__BackingField: {fileID: 11400000, guid: 54781abef1c2be04d8cbe9e38f526414, type: 2}
+  <voice>k__BackingField: {fileID: 11400000, guid: 8844a5d65e46de0448e0b5d048b09064, type: 2}
   MaxHPExpressionOveride: {fileID: 0}
   MaxMPExpressionOveride: {fileID: 0}

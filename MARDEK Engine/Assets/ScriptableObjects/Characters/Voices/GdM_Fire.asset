@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 927d99b98b7b3244d97c3b9a3fc9fb01, type: 3}
+  m_Name: GdM_Fire
+  m_EditorClassIdentifier: 
+  <Color>k__BackingField: {r: 1, g: 0.6, b: 0, a: 1}
+  <Font>k__BackingField: {fileID: 11400000, guid: 25a2fbfa89d94b4449eee247221baea2, type: 2}
+  <Material>k__BackingField: {fileID: 2100000, guid: 983efc6e5be86c34fb0cc2f9fa931997, type: 2}
+  <FontSize>k__BackingField: 50
