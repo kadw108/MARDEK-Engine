@@ -21,7 +21,7 @@ import re
 # For exporting as JSON
 import json
 
-# What all the imported SVG shapes are scaled up by
+# What all the imported SVG shapes are scaled up by during importing and in regards to position changes
 # (because Unity MARDEK's 1920x1080 resolution is larger than the vanilla res)
 globalScaleFactor = 2.66
 
@@ -39,8 +39,10 @@ class ComponentShape:
         self.shapeNum = shapeNum
         self.frameNum = frameNum
 
-        self.bounds = self.get_bounds()
+        # This was for getting the correct TransformMatrix position but it might not be necessary. Possibly remove later.
+        # self.bounds = self.get_bounds()
 
+    # TODO: remove?
     def get_bounds(self):
         # Search SVG file for the shapeBounds rect info
         # Faster than searching XML
@@ -73,6 +75,7 @@ class ComponentShape:
 
     def __str__(self):
         return \
+        "ComponentShape" + \
         " frameNum " + str(self.frameNum) + \
         ", label " + str(self.label) + \
         ", path " + str(self.get_svg_path())
@@ -95,9 +98,10 @@ is more like an animation that can be reused by different creatures)
 e.g. DefineSprite3189 (fish tail sprite)
 """
 class ComponentSprite:
-    def __init__(self, spriteNum, matrix):
+    def __init__(self, spriteNum, matrix, depth):
         self.spriteNum = spriteNum
         self.matrix = matrix
+        self.depth = depth
 
         self.componentFrames = []
         self.scan_component_frames()
@@ -138,8 +142,9 @@ class ComponentSprite:
                             shapeNum = -1
                 break
 
-        self.set_matrix_bounds()
+        # self.set_matrix_bounds()
 
+    # TODO: remove?
     # This is taken from getCharacterBounds
     # in https://github.com/jindrapetrik/jpexs-decompiler/blob/2ddcf6880c0574a6c6cce92ab3146d8c31801fcf/libsrc/ffdec_lib/src/com/jpexs/decompiler/flash/tags/DefineSpriteTag.java
     def set_matrix_bounds(self):
@@ -159,6 +164,7 @@ class ComponentSprite:
 
     def __str__(self):
         return \
+        "ComponentSprite" + \
         " sprite num: " + str(self.spriteNum) + \
         " component frame len: " + str(len(self.componentFrames)) + \
         " bounds: " + str(self.matrix.bounds) + \
@@ -170,7 +176,6 @@ class ComponentSprite:
             "spriteNumber": self.spriteNum,
             "shapes": [shape.get_json_dict() for shape in self.componentFrames]
         }
-
 
 """
 Represents a matrix transform associated with a PlaceObject2Tag.
@@ -226,8 +231,10 @@ class TransformMatrix:
         You also need to add the xMin/yMin of the shape's shapeBounds rect for some reason, to the translateX/Y respectively
         EDIT: ACTUALLY I DO NOT THINK THAT IS NECESSARY, REMOVE THE BOUNDS STUFF THEN? TODO
         """
-        if self.bounds["xMin"] == -1 or self.bounds["yMin"] == -1:
-            print("WARNING! Trying to convert values for matrix without bounds! You should first call set_matrix_bounds on the associated ComponentSprite.")
+
+        # TODO: remove?
+        # if self.bounds["xMin"] == -1 or self.bounds["yMin"] == -1:
+        #    print("WARNING! Trying to convert values for matrix without bounds! You should first call set_matrix_bounds on the associated ComponentSprite.")
 
         newScaleX = self.scaleX / pow(2, 16)
         newScaleY = self.scaleY / pow(2, 16)
@@ -242,7 +249,6 @@ class TransformMatrix:
             newTranslateX = 0
             newTranslateY = 0
 
-        # return ((newScaleX, newRotateSkew0, newTranslateX), (newRotateSkew1, newScaleY, newTranslateY))
         return {"scaleX": newScaleX, "rotateSkew0": newRotateSkew0, "translateX": newTranslateX,
             "scaleY": newScaleY, "rotateSkew1": newRotateSkew1, "translateY": newTranslateY}
 
@@ -263,6 +269,45 @@ class TransformMatrix:
         scaleStr + \
         rotateStr + "}"
 
+class ComponentInAnimationFrame:
+    def __init__(self):
+        self.component = None
+        self.depth = None
+        self.transform = None
+
+    def __str__(self):
+        return \
+        "ComponentInAnimationFrame" + \
+        " depth: " + str(depth) + \
+        " transform: " + str(transform)
+
+class AnimationFrame:
+    def __init__(self, frameNumber, relativeFrameNumber):
+        self.frameNumber = frameNumber
+        self.relativeFrameNumber = relativeFrameNumber
+        self.listOfComponents = []
+
+    def __str__(self):
+       return \
+       "AnimationFrame" + \
+       " frameNumber: " + str(self.frameNumber) + \
+       " relativeFrameNumber " + str(self.relativeFrameNumber) + \
+       " num of components: " + str(len(self.listOfComponents))
+
+class Animation:
+    def __init__(self, name, startFrame):
+        self.name = name
+        self.startFrame = startFrame
+
+        self.listOfFrames = []
+
+    def __str__(self):
+        return \
+        "Animation" + \
+        " name: " + self.name + \
+        " startFrame: " + str(self.startFrame) + \
+        " num of frames: " + str(len(self.listOfFrames))
+
 """
 Represents a frame of DefineSprite5118, the master sprite
 containing all battle model info.
@@ -280,14 +325,9 @@ class BattleModelFrame:
         self.modelSpriteNum = -1
 
         self.modelComponents = []
+        self.animations = []
 
-    def __str__(self):
-        return \
-        " frame num: " + str(self.frameNum) + \
-        " labels: " + str(self.labels) + \
-        " model sprite num: " + str(self.modelSpriteNum) + "\n"
-
-    def find_model_components(self, DOMTree):
+    def find_model_components_and_animations(self, DOMTree):
         frameCount = 0
 
         items = DOMTree.findall(".//{*}item")
@@ -295,27 +335,113 @@ class BattleModelFrame:
             if item.get("type") == "DefineSpriteTag" and item.get("spriteId") == str(self.modelSpriteNum):
                 subItems = item.findall(".//{*}item")
 
+                currAnimation = None
+                currAnimFrame = None
+                emptyFrame = True
+                frameCount = 0
+
                 for subItem in subItems:
 
-                    # The first frame of a battle model will place all the component sprites
-                    # Which is what we want to find here
+                    if subItem.get("type") == "PlaceObject2Tag":
 
-                    if subItem.get("type") == "PlaceObject2Tag" and \
-                    subItem.get("characterId") is not 0:
-                        component = ComponentSprite(
-                            subItem.get("characterId"),
-                            TransformMatrix(subItem[0])
+                        emptyFrame = False
+
+                        # The first frame of a battle model will place all the component sprites
+                        # Which is what we want to find here
+                        if frameCount == 0:
+                            component = ComponentSprite(
+                                subItem.get("characterId"),
+                                TransformMatrix(subItem[0]),
+                                subItem.get("depth")
+                            )
+
+                            # DefineSprite2306 is for dynamic status bar stuff and not a part of the model
+                            if component.spriteNum != "2306":
+                                self.modelComponents.append(component)
+
+                        # On any frame that's not the first frame, a PlaceObject2Tag corresponds to 
+                        # the movement for one component for the current frame.
+                        # Components are identified by depth.
+                        else:
+                            # This happens sometimes. Guessing it's just Tobias testing things. Probably.
+                            if currAnimation is None:
+                                # print("BattleModel", self.modelSpriteNum, "has PlaceObject2Tag without animation on frame", frameCount)
+                                pass
+
+                            else:
+                                if currAnimFrame is None:
+                                    currAnimFrame = AnimationFrame(
+                                        relativeFrameNumber = frameCount - currAnimation.startFrame,
+                                        frameNumber = frameCount
+                                    )
+
+                                # PlaceObject2Tags for morphshapes
+                                # (ie the shadows for each model which are always the first placeobject2tag in a frame)
+                                # don't have a transform matrix so we ignore them
+                                if (len(subItem) > 0):
+                                    for element in subItem:
+                                        # TODO: There is also the colorTransform object, type="CXFORMWITHALPHA"
+                                        # which sometimes appears with/instead of MATRIX.
+                                        # Should implement that at some point.
+
+                                        if element.get("type") == "MATRIX":
+                                            cMove = ComponentInAnimationFrame()
+                                            cMove.depth = subItem.get("depth")
+
+                                            cMove.transform = TransformMatrix(subItem[0])
+
+                                            currAnimFrame.listOfComponents.append(cMove)
+
+                    elif subItem.get("type") == "FrameLabelTag":
+                        emptyFrame = False
+
+                        # end current animation and make a new one
+
+                        if currAnimation is not None:
+                            self.animations.append(currAnimation)
+                            currAnimFrame = None
+
+                        currAnimation = Animation(
+                            name = subItem.get("name"),
+                            startFrame = frameCount
                         )
 
-                        # DefineSprite2306 is for dynamic status bar stuff and not a part of the model
-                        if component.spriteNum != "2306":
-                            self.modelComponents.append(component)
-
-                    # Stop searching after the first frame
+                    # After the first frame, it's all animation info
                     elif subItem.get("type") == "ShowFrameTag":
-                        break
+
+                        # Don't add any animation info for first frame
+                        if frameCount == 0:
+                            pass
+                        else:
+                            # cases: end of an animation, within an animation, within a gap
+                            # if currAnimation is None, then a new animation hasn't started yet, so do nothing (gap)
+
+                            if currAnimation is not None:
+                                # if it's an empty frame and animation is not empty (end of animation), end that animation
+                                if emptyFrame:
+                                    self.animations.append(currAnimation)
+
+                                    currAnimation = None
+                                    currAnimFrame = None
+
+                                # if it's a non-empty frame and animation is not empty (within animation), add frame to animation
+                                else:
+                                    currAnimation.listOfFrames.append(currAnimFrame)
+                                    currAnimFrame = None
+
+                        frameCount += 1
+                        emptyFrame = True
 
                 break
+
+    def __str__(self):
+        return \
+        "BattleModelFrame" + \
+        " frame num: " + str(self.frameNum) + \
+        " labels: " + str(self.labels) + \
+        " model sprite num: " + str(self.modelSpriteNum) + \
+        " animations: " + str([(anim.name, len(anim.listOfFrames)) for anim in self.animations]) + \
+        "\n"
 
     def get_json_dict(self):
         return {
@@ -364,6 +490,7 @@ Each frame is formatted as a BattleModelFrame object
 def readFrames(DOMTree):
     frameCount = 0
     frameList = []
+    spriteNumberList = []
 
     # Find the actual DefineSprite in the greater XML representing target DefineSprite5118
     # There is no method for finding node by attribute, so iterate over them
@@ -390,10 +517,14 @@ def readFrames(DOMTree):
                     frameInfo.modelSpriteNum = subItem.get("characterId")
 
                 elif subItem.get("type") == "ShowFrameTag":
-                    frameInfo.frameNum = frameCount + 1
+                    # Different creatures can have the same model, so spriteNumberList is used to avoid repeats
+                    if frameInfo.modelSpriteNum != -1 and \
+                    frameInfo.modelSpriteNum not in spriteNumberList:
+                        frameInfo.frameNum = frameCount + 1
+                        frameList.append(frameInfo)
+                        spriteNumberList.append(frameInfo.modelSpriteNum)
 
                     frameCount += 1
-                    frameList.append(frameInfo)
                     frameInfo = BattleModelFrame()
             break
 
@@ -507,13 +638,22 @@ def run_all():
 
 if __name__ == "__main__":
     DOMTree = getDOMTree("DefineSprite5118_Exported.xml")
-    forestFish = readFrames(DOMTree)[39]
-    forestFish.find_model_components(DOMTree)
+    frames = readFrames(DOMTree)
+    for i in frames:
+        i.find_model_components_and_animations(DOMTree)
+        print(i)
 
+    # forestFish = readFrames(DOMTree)[39]
+    # forestFish.find_model_components_and_animations(DOMTree)
+
+    """
     with open("test.json", "w") as f:
         json.dump([forestFish.get_json_dict()], f)
+    """
 
+    """
     for i in forestFish.modelComponents:
         print(i)
         print([str(j) for j in i.componentFrames])
         print()
+    """
