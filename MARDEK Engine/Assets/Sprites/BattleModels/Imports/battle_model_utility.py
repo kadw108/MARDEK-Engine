@@ -270,16 +270,17 @@ class TransformMatrix:
         rotateStr + "}"
 
 class ComponentInAnimationFrame:
-    def __init__(self):
-        self.component = None
-        self.depth = None
-        self.transform = None
+    def __init__(self, component, depth, transform):
+        self.component = component
+        self.depth = depth
+        self.transform = transform
 
     def __str__(self):
         return \
         "ComponentInAnimationFrame" + \
-        " depth: " + str(depth) + \
-        " transform: " + str(transform)
+        " component: " + str(self.component.spriteNum) + \
+        " depth: " + str(self.depth) + \
+        " transform: " + str(self.transform)
 
 class AnimationFrame:
     def __init__(self, frameNumber, relativeFrameNumber):
@@ -291,7 +292,6 @@ class AnimationFrame:
        return \
        "AnimationFrame" + \
        " frameNumber: " + str(self.frameNumber) + \
-       " relativeFrameNumber " + str(self.relativeFrameNumber) + \
        " num of components: " + str(len(self.listOfComponents))
 
 class Animation:
@@ -325,6 +325,7 @@ class BattleModelFrame:
         self.modelSpriteNum = -1
 
         self.modelComponents = []
+        self.componentDepthDict = {}
         self.animations = []
 
     def find_model_components_and_animations(self, DOMTree):
@@ -354,6 +355,7 @@ class BattleModelFrame:
                                 TransformMatrix(subItem[0]),
                                 subItem.get("depth")
                             )
+                            self.componentDepthDict[subItem.get("depth")] = component
 
                             # DefineSprite2306 is for dynamic status bar stuff and not a part of the model
                             if component.spriteNum != "2306":
@@ -383,14 +385,22 @@ class BattleModelFrame:
                                         # TODO: There is also the colorTransform object, type="CXFORMWITHALPHA"
                                         # which sometimes appears with/instead of MATRIX.
                                         # Should implement that at some point.
-
                                         if element.get("type") == "MATRIX":
-                                            cMove = ComponentInAnimationFrame()
-                                            cMove.depth = subItem.get("depth")
 
-                                            cMove.transform = TransformMatrix(subItem[0])
-
-                                            currAnimFrame.listOfComponents.append(cMove)
+                                            # Sometimes new objects appear in the middle of an animation - this is PlaceObject and RemoveObject stuff
+                                            # When an object with depth not in the dict appears it means it's not part of the normal sprite
+                                            # eg. it's Mardek's sword swing or something
+                                            # TODO add support for this (!!!)
+                                            if subItem.get("depth") not in self.componentDepthDict:
+                                                # print("WARNING:", subItem.get("depth"), "not in depth dict! Battle Model:", str(self), "Frame:", frameCount, "Subitem:", subItem.items())
+                                                pass
+                                            else:
+                                                cMove = ComponentInAnimationFrame(
+                                                    component = self.componentDepthDict[subItem.get("depth")],
+                                                    depth = subItem.get("depth"),
+                                                    transform = TransformMatrix(subItem[0])
+                                                )
+                                                currAnimFrame.listOfComponents.append(cMove)
 
                     elif subItem.get("type") == "FrameLabelTag":
                         emptyFrame = False
@@ -639,12 +649,16 @@ def run_all():
 if __name__ == "__main__":
     DOMTree = getDOMTree("DefineSprite5118_Exported.xml")
     frames = readFrames(DOMTree)
+
+    """
     for i in frames:
         i.find_model_components_and_animations(DOMTree)
         print(i)
+    """
 
-    # forestFish = readFrames(DOMTree)[39]
-    # forestFish.find_model_components_and_animations(DOMTree)
+    forestFish = frames[22]
+    forestFish.find_model_components_and_animations(DOMTree)
+    print(forestFish)
 
     """
     with open("test.json", "w") as f:
