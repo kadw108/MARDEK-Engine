@@ -174,6 +174,7 @@ class ComponentSprite:
         return {
             "transformMatrix": self.matrix.convert_values(),
             "spriteNumber": self.spriteNum,
+            "depth": self.depth,
             "shapes": [shape.get_json_dict() for shape in self.componentFrames]
         }
 
@@ -238,11 +239,13 @@ class TransformMatrix:
 
         newScaleX = self.scaleX / pow(2, 16)
         newScaleY = self.scaleY / pow(2, 16)
-        newRotateSkew0 = self.rotateSkew0 / pow(2, 16)
-        newRotateSkew1 = self.rotateSkew1 / pow(2, 16)
 
-        newTranslateX = globalScaleFactor * (1/20.0) * self.translateX # * (self.translateX + self.bounds["xMin"])
-        newTranslateY = -1 * globalScaleFactor * (1/20.0) * self.translateY # * (self.translateY + self.bounds["yMin"])
+        # The rotateSkews have to be flipped, not sure why, but not flipping them leads to the z-euler angle rotation being reversed
+        newRotateSkew0 = - self.rotateSkew0 / pow(2, 16)
+        newRotateSkew1 = - self.rotateSkew1 / pow(2, 16)
+
+        newTranslateX = (globalScaleFactor) * (1/20.0) * self.translateX # * (self.translateX + self.bounds["xMin"])
+        newTranslateY = -1 * (globalScaleFactor) * (1/20.0) * self.translateY # * (self.translateY + self.bounds["yMin"])
 
         if self.bounds["xMin"] == float('inf') or self.bounds["yMin"] == float('inf'):
             print("Stopgap for the 2 special sprites - ignore all nonavailable/nonstandard bounds")
@@ -282,6 +285,12 @@ class ComponentInAnimationFrame:
         " depth: " + str(self.depth) + \
         " transform: " + str(self.transform)
 
+    def get_json_dict(self):
+        return {
+            "componentDepth": self.component.depth,
+            "transform": self.transform.convert_values()
+        }
+
 class AnimationFrame:
     def __init__(self, frameNumber, relativeFrameNumber):
         self.frameNumber = frameNumber
@@ -293,6 +302,13 @@ class AnimationFrame:
        "AnimationFrame" + \
        " frameNumber: " + str(self.frameNumber) + \
        " num of components: " + str(len(self.listOfComponents))
+
+    def get_json_dict(self):
+        return {
+            "frameNumber": self.frameNumber,
+            "relativeFrameNumber": self.relativeFrameNumber,
+            "listOfComponents": [i.get_json_dict() for i in self.listOfComponents]
+        }
 
 class Animation:
     def __init__(self, name, startFrame):
@@ -307,6 +323,13 @@ class Animation:
         " name: " + self.name + \
         " startFrame: " + str(self.startFrame) + \
         " num of frames: " + str(len(self.listOfFrames))
+
+    def get_json_dict(self):
+        return {
+            "name": self.name,
+            "startFrame": self.startFrame,
+            "listOfFrames": [i.get_json_dict() for i in self.listOfFrames]
+        }
 
 """
 Represents a frame of DefineSprite5118, the master sprite
@@ -436,29 +459,47 @@ class BattleModelFrame:
 
                                 # if it's a non-empty frame and animation is not empty (within animation), add frame to animation
                                 else:
-                                    currAnimation.listOfFrames.append(currAnimFrame)
-                                    currAnimFrame = None
+                                    if currAnimFrame is None:
+                                        pass
+                                        # Sometimes currAnimFrame is None when emptyFrame is False
+                                        # I think this is fine, probably happens with the frame that indicates a new animation
+                                        # Which contains a label, so it's not empty, but sometimes contains no actual PlaceObject2Tag elements
+                                    else:
+                                        currAnimation.listOfFrames.append(currAnimFrame)
+                                        currAnimFrame = None
 
                         frameCount += 1
                         emptyFrame = True
 
                 break
 
+    def get_name(self):
+        # Take last element of self.labels, or "" if it's empty (which it sometimes is)
+        # self.labels has length 0-2; if it's 2, the first label is a category label we can ignore
+
+        if not self.labels:
+            return "NO NAME"
+
+        return self.labels[len(self.labels) - 1]
+
     def __str__(self):
         return \
         "BattleModelFrame" + \
         " frame num: " + str(self.frameNum) + \
-        " labels: " + str(self.labels) + \
+        " name: " + self.get_name() + \
         " model sprite num: " + str(self.modelSpriteNum) + \
         " animations: " + str([(anim.name, len(anim.listOfFrames)) for anim in self.animations]) + \
         "\n"
 
     def get_json_dict(self):
         return {
-            "labels": self.labels,
+            # Take last element of self.labels, or "" if it's empty (which it sometimes is)
+            # self.labels has length 0-2; if it's 2, the first label is a category label we can ignore
+            "name": self.get_name(),
             "spriteNumber": self.modelSpriteNum,
             "frameNumber": self.frameNum,
-            "components": [compo.get_json_dict() for compo in self.modelComponents]
+            "components": [compo.get_json_dict() for compo in self.modelComponents],
+            "animations": [anim.get_json_dict() for anim in self.animations]
             }
 
 """
@@ -650,20 +691,12 @@ if __name__ == "__main__":
     DOMTree = getDOMTree("DefineSprite5118_Exported.xml")
     frames = readFrames(DOMTree)
 
-    """
-    for i in frames:
-        i.find_model_components_and_animations(DOMTree)
-        print(i)
-    """
+    model = frames[33]
+    model.find_model_components_and_animations(DOMTree)
+    print(model)
 
-    forestFish = frames[22]
-    forestFish.find_model_components_and_animations(DOMTree)
-    print(forestFish)
-
-    """
     with open("test.json", "w") as f:
-        json.dump([forestFish.get_json_dict()], f)
-    """
+        json.dump([model.get_json_dict()], f)
 
     """
     for i in forestFish.modelComponents:
