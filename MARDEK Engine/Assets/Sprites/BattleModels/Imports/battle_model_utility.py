@@ -691,7 +691,7 @@ if __name__ == "__main__":
     DOMTree = getDOMTree("DefineSprite5118_Exported.xml")
     frames = readFrames(DOMTree)
 
-    model = frames[33]
+    model = frames[22]
     model.find_model_components_and_animations(DOMTree)
     print(model)
 

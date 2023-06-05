@@ -7,7 +7,9 @@ using Newtonsoft.Json;
 namespace MARDEK.Battle
 {
     // To make this work:
-    // Attach to empty gameObject in a scene and run the scene.
+    // Attach to empty gameObject in a scene,
+    // attach the appropriate json file (currently test.json in Assets/Sprites/BattleModels/Imports)
+    // and run the scene.
     public class ModelImporter : MonoBehaviour
     {
         // The JSON should be formatted as follows:
@@ -89,12 +91,6 @@ namespace MARDEK.Battle
                 cJSON.gameObjectName = childComponent.name;
                 childComponent.transform.parent = modelPrefab.transform;
 
-                /*
-                Matrix4x4 newMatrix = Utility.UnityMatrixFromFlash(cJSON.transformMatrix);
-                childComponent.transform.localPosition = Utility.ExtractPosition(newMatrix);
-                childComponent.transform.localRotation = Utility.ExtractRotation(newMatrix);
-                childComponent.transform.localScale = Utility.ExtractScale(newMatrix);
-                */
                 childComponent.transform.localPosition = Utility.Position(cJSON.transformMatrix);
                 childComponent.transform.localRotation = Utility.Rotation(cJSON.transformMatrix);
                 childComponent.transform.localScale = Utility.Scale(cJSON.transformMatrix);
@@ -159,89 +155,99 @@ namespace MARDEK.Battle
             foreach (AnimationJSON anim in model.animations) {
                 AnimationClip clip = new();
 
+                foreach(ComponentJSON compo in model.components)
+                {
+                    anim.listOfCurves.Add(new ComponentCurves(
+                        compo.gameObjectName, compo.depth));
+                }
+
                 foreach (AnimationFrameJSON frame in anim.listOfFrames)
                 {
                     foreach(AnimationFrameComponentJSON compFrameInfo in frame.listOfComponents)
                     {
-                        ComponentJSON componentRef = model.depthDict[compFrameInfo.componentDepth];
-
-                        /*
-                        Matrix4x4 frameTransform = Utility.UnityMatrixFromFlash(compFrameInfo.transform);
-                        Vector3 framePosition = Utility.ExtractPosition(frameTransform);
-                        Vector3 frameRotation = Utility.ExtractRotation(frameTransform).eulerAngles;
-                        Vector3 frameScale = Utility.ExtractScale(frameTransform);
-                        */
-
-                        Vector2 framePosition = Utility.Position(compFrameInfo.transform);
-                        Vector3 frameRotation = Utility.Rotation(compFrameInfo.transform).eulerAngles;
-                        Vector3 frameScale = Utility.Scale(compFrameInfo.transform);
-
-                        // MARDEK's animations are 30FPS by default
-                        float frameTime = frame.relativeFrameNumber * (float) (1.0 / 30.0);
-
-                        componentRef.curves.translateX.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                framePosition.x
-                            )
+                        ComponentCurves componentCurves = anim.listOfCurves.Find(
+                            curves => (curves.depth == compFrameInfo.componentDepth)
                         );
 
-                        componentRef.curves.translateY.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                framePosition.y
-                            )
-                        );
+                        // Sometimes it's null, I'm guessing for special components that weren't included in model.components
+                        // Alternatively for components that get added mid-animation
+                        // TODO add support for this stuff
+                        if (componentCurves != null)
+                        {
+                            Vector2 framePosition = Utility.Position(compFrameInfo.transform);
+                            Vector3 frameRotation = Utility.Rotation(compFrameInfo.transform).eulerAngles;
+                            Vector3 frameScale = Utility.Scale(compFrameInfo.transform);
 
-                        componentRef.curves.rotX.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                frameRotation.x
-                            )
-                        );
+                            // MARDEK's animations are 30FPS by default, so (1.0 / 30.0)
+                            float frameTime = frame.relativeFrameNumber * (float) (1.0 / 30.0);
 
-                        componentRef.curves.rotY.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                frameRotation.y
-                            )
-                        );
+                            // Make InTangent and OutTangent both 0 to disable interpolation,
+                            // after https://stackoverflow.com/questions/57566668/unity-how-to-disable-animation-interpolation-animation-curves 
+                            // Interpolation makes angles spin when they go from 0-360 (not ideal)
+                            componentCurves.translateX.AddKey(
+                                new Keyframe(frameTime, framePosition.x)
+                            );
+                            componentCurves.translateY.AddKey(
+                                new Keyframe(frameTime, framePosition.y)
+                            );
 
-                        componentRef.curves.rotZ.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                frameRotation.z
-                            )
-                        );
+                            // For the Unity 360-0 or 0-360 rotation interpolation error
+                            if (componentCurves.prevRotZ != -1)
+                            {
+                                if (componentCurves.prevRotZ > 340 && frameRotation.z < 10)
+                                {
+                                    componentCurves.circleNum++;
+                                }
+                                else if (componentCurves.prevRotZ < 10 && frameRotation.z > 340)
+                                {
+                                    componentCurves.circleNum--;
+                                }
+                            }
+                            componentCurves.prevRotZ = frameRotation.z;
+                            float actualRotZ = frameRotation.z + componentCurves.circleNum * 360;
+                            componentCurves.rotZ.AddKey(
+                                new Keyframe(frameTime, actualRotZ)
+                            );
 
-                        componentRef.curves.scaleX.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                frameScale.x
-                            )
-                        );
 
-                        componentRef.curves.scaleY.AddKey(
-                            new Keyframe(
-                                frameTime,
-                                frameScale.y
-                            )
-                        );
+                            // Sometimes scale goes to 0 for one frame when it shouldn't, no clue why,
+                            // probably an artifact of the process used to get scale from the 2x3 transform matrix,
+                            // just keep track of when it happens and undo it
+                            if (Mathf.Abs(componentCurves.prevScaleX) > 0.9 &&
+                                Mathf.Abs(frameScale.x) < 0.1)
+                            {
+                                frameScale.x = componentCurves.prevScaleX;
+                            }
+                            componentCurves.scaleX.AddKey(
+                                new Keyframe(frameTime, frameScale.x)
+                            );
+                            componentCurves.prevScaleX = frameScale.x;
+
+                            if (Mathf.Abs(componentCurves.prevScaleY) > 0.9 &&
+                                Mathf.Abs(frameScale.y) < 0.1)
+                            {
+                                frameScale.y = componentCurves.prevScaleY;
+                            }
+                            componentCurves.scaleY.AddKey(
+                                new Keyframe(frameTime, frameScale.y)
+                            );
+                            componentCurves.prevScaleY = frameScale.y;
+                        }
                     }
                 }
 
-                foreach (ComponentJSON c in model.components)
+                foreach (ComponentCurves c in anim.listOfCurves)
                 {
                     string componentName = c.gameObjectName;
 
                     // Property names from https://forum.unity.com/threads/list-of-all-property-names.192974/
-                    clip.SetCurve(componentName, typeof(Transform), "localPosition.x", c.curves.translateX);
-                    clip.SetCurve(componentName, typeof(Transform), "localPosition.y", c.curves.translateY);
-                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.x", c.curves.rotX);
-                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.y", c.curves.rotY);
-                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.z", c.curves.rotZ);
-                    clip.SetCurve(componentName, typeof(Transform), "localScale.x", c.curves.scaleX);
-                    clip.SetCurve(componentName, typeof(Transform), "localScale.y", c.curves.scaleY);
+                    clip.SetCurve(componentName, typeof(Transform), "localPosition.x", c.translateX);
+                    clip.SetCurve(componentName, typeof(Transform), "localPosition.y", c.translateY);
+                    // clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.x", c.rotX);
+                    // clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.y", c.rotY);
+                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.z", c.rotZ);
+                    clip.SetCurve(componentName, typeof(Transform), "localScale.x", c.scaleX);
+                    clip.SetCurve(componentName, typeof(Transform), "localScale.y", c.scaleY);
                 }
 
                 // According to the documentation, this should be called after curves are set
@@ -291,9 +297,6 @@ namespace MARDEK.Battle
             [SerializeField] public string depth;
             [SerializeField] public List<ShapeJSON> shapes;
 
-            // Not part of the JSON
-            // Used to conveniently store animation info once it's read separately
-            public ComponentCurves curves = new();
             // Used to store unique name for each component, since animations are based on
             // gameObject names meaning all components must have different names
             public string gameObjectName = "";
@@ -320,6 +323,10 @@ namespace MARDEK.Battle
             [SerializeField] public string name;
             [SerializeField] public int startFrame;
             [SerializeField] public List<AnimationFrameJSON> listOfFrames;
+
+            // Not part of the JSON
+            // Used to conveniently store animation info once it's read separately
+            public List<ComponentCurves> listOfCurves = new();
         }
 
         private class AnimationFrameJSON
@@ -337,97 +344,54 @@ namespace MARDEK.Battle
 
         private class ComponentCurves
         {
+            // gameObjectName and depth of component these curves are attached to
+            // Used to identify it when creating the animation
+            public string gameObjectName;
+            public string depth;
+
             public AnimationCurve translateX;
             public AnimationCurve translateY;
-            public AnimationCurve rotX;
-            public AnimationCurve rotY;
+            // public AnimationCurve rotX;
+            // public AnimationCurve rotY;
             public AnimationCurve rotZ;
             public AnimationCurve scaleX;
             public AnimationCurve scaleY;
 
-            public ComponentCurves()
+            // For fixing the "interpolation between 360 and 0 degrees" Unity issue
+            public float prevRotZ;
+            public float circleNum;
+
+            public float prevScaleX;
+            public float prevScaleY;
+
+            public ComponentCurves(string gameObjectName, string depth)
             {
+                this.gameObjectName = gameObjectName;
+                this.depth = depth;
+
                 translateX = new();
                 translateY = new();
-                rotX = new();
-                rotY = new();
+                // rotX = new();
+                // rotY = new();
                 rotZ = new();
                 scaleX = new();
                 scaleY = new();
+
+                prevRotZ = -1;
+                circleNum = 0;
             }
         }
 
         // Utility functions
+        // They get position/rotation/scale from the 2x3 affine matrix (TransformJSON)
         private static class Utility
         {
-            /*
-            // Old matrix utility functions
-            // From https://forum.unity.com/threads/how-to-assign-matrix4x4-to-transform.121966/
-            // No longer using these because they don't work perfectly for some reason
-            // (In particular, the ExtractRotation formula doesn't take one of the rotateSkew values into account
-            // and therefore gives incorrect rotation values)
-            public static Quaternion ExtractRotation(Matrix4x4 matrix)
-            {
-                Vector3 forward;
-                forward.x = matrix.m02;
-                forward.y = matrix.m12;
-                forward.z = matrix.scaleZ;
-
-                Vector3 upwards;
-                upwards.x = matrix.m01;
-                upwards.y = matrix.scaleY;
-                upwards.z = matrix.m21;
-
-                return Quaternion.LookRotation(forward, upwards);
-            }
-
-            public static Vector3 ExtractPosition(Matrix4x4 matrix)
-            {
-                Vector2 position;
-                position.x = matrix.m03;
-                position.y = matrix.m13;
-                return position;
-            }
-
-            public static Vector3 ExtractScale(Matrix4x4 matrix)
-            {
-                Vector3 scale;
-                scale.x = new Vector4(matrix.scaleX, matrix.m10, matrix.m20, matrix.m30).magnitude;
-                scale.y = new Vector4(matrix.m01, matrix.scaleY, matrix.m21, matrix.m31).magnitude;
-                scale.z = 1;
-                return scale;
-            }
-
-            public static Matrix4x4 UnityMatrixFromFlash(TransformJSON transformMatrix)
-            {
-                // Try to convert JPEXS 2x3 affine transform matrix to Unity's Matrix4x4
-                // Using formula from https://forum.unity.com/threads/convert-matrix-2x3-to-4x4.1153091/
-                Matrix4x4 newMatrix = new Matrix4x4();
-                newMatrix.SetRow(0, new Vector4(
-                    transformMatrix.scaleX, transformMatrix.rotateSkew1,
-                    0, transformMatrix.translateX)
-                );
-                newMatrix.SetRow(1, new Vector4(
-                    transformMatrix.rotateSkew0, transformMatrix.scaleY,
-                    0, transformMatrix.translateY)
-                );
-                newMatrix.SetRow(2, new Vector4(0, 0, 1, 0));
-                newMatrix.SetRow(3, new Vector4(0, 0, 0, 1));
-
-                return newMatrix;
-            }
-            */
-
-            // New functions - the old ones had some issues and the scale/rotation was off
-            // Also converting to 4x4 matrix was unnecessary
-
             /*
              * The SWF 2x3 transform matrix is:
              * scaleX rotateSkew1 translateX
              * rotateSkew0 scaleY translateY
              */
 
-            // Get position/rotation/scale from the 2x3 affine matrix
             // Based on https://math.stackexchange.com/questions/13150/extracting-rotation-scale-values-from-2d-transformation-matrix?noredirect=1&lq=1 
             // NOTE: THIS IS IMPERFECT BECAUSE IT DOES NOT WORK FOR SKEW
             // The Unity Transform component does not support skew
@@ -451,50 +415,39 @@ namespace MARDEK.Battle
                  * 0           0           0 1
                  */
 
-                float scaleX = t.scaleX; // m00
-                float scaleY = t.scaleY; // m11
-                float scaleZ = 1; // m22
-
-                float m21 = 0;
-                float m12 = 0;
-                float m02 = 0;
-                float m20 = 0;
-                float m10 = t.rotateSkew0;
-                float m01 = t.rotateSkew1;
-
-                float tr = scaleX + scaleY + scaleZ;
+                float tr = t.scaleX + t.scaleY + 1;
                 double qw, qx, qy, qz;
 
                 if (tr > 0)
                 {
                     float S = Mathf.Sqrt((float)(tr + 1.0)) * 2; // S=4*qw 
                     qw = 0.25 * S;
-                    qx = (m21 - m12) / S; // always 0
-                    qy = (m02 - m20) / S; // always 0
-                    qz = (m10 - m01) / S;
+                    qx = 0;
+                    qy = 0;
+                    qz = (t.rotateSkew0 - t.rotateSkew1) / S;
                 }
-                else if ((scaleX > scaleY) & (scaleX > scaleZ))
+                else if ((t.scaleX > t.scaleY) & (t.scaleX > 1))
                 {
-                    float S = Mathf.Sqrt((float)(1.0 + scaleX - scaleY - scaleZ)) * 2; // S=4*qx 
-                    qw = (m21 - m12) / S; // always 0
+                    float S = Mathf.Sqrt((float)(t.scaleX - t.scaleY)) * 2; // S=4*qx 
+                    qw = 0;
                     qx = 0.25 * S;
-                    qy = (m01 + m10) / S;
-                    qz = (m02 + m20) / S; // always 0
+                    qy = (t.rotateSkew1 + t.rotateSkew0) / S;
+                    qz = 0;
                 }
-                else if (scaleY > scaleZ)
+                else if (t.scaleY > 1)
                 {
-                    float S = Mathf.Sqrt((float)(1.0 + scaleY - scaleX - scaleZ)) * 2; // S=4*qy
-                    qw = (m02 - m20) / S; // always 0
-                    qx = (m01 + m10) / S;
+                    float S = Mathf.Sqrt((float)(t.scaleY - t.scaleX)) * 2; // S=4*qy
+                    qw = 0;
+                    qx = (t.rotateSkew1 + t.rotateSkew0) / S;
                     qy = 0.25 * S;
-                    qz = (m12 + m21) / S; // always 0
+                    qz = 0;
                 }
                 else
                 {
-                    float S = Mathf.Sqrt((float)(1.0 + scaleZ - scaleX - scaleY)) * 2; // S=4*qz
-                    qw = (m10 - m01) / S;
-                    qx = (m02 + m20) / S; // always 0
-                    qy = (m12 + m21) / S; // always 0
+                    float S = Mathf.Sqrt((float)(1.0 + 1 - t.scaleX - t.scaleY)) * 2; // S=4*qz
+                    qw = (t.rotateSkew0 - t.rotateSkew1) / S;
+                    qx = 0;
+                    qy = 0;
                     qz = 0.25 * S; 
                 }
 
@@ -504,9 +457,11 @@ namespace MARDEK.Battle
             }
             public static Vector3 Scale(TransformJSON t)
             {
+                // Giving the scales the sign of scaleX, scaleY allows for negative scales
                 Vector3 scale;
                 scale.x = new Vector2(t.scaleX, t.rotateSkew1).magnitude;
                 scale.x = t.scaleX > 0 ? scale.x : -scale.x; // Give scale.x sign of scaleX
+
                 scale.y = new Vector2(t.scaleY, t.rotateSkew0).magnitude;
                 scale.y = t.scaleY > 0 ? scale.y : -scale.y; // Give scale.y sign of scaleY
 
