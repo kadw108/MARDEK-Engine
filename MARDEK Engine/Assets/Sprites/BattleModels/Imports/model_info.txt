@@ -1,4 +1,6 @@
-(This is not used by any of the code. It's a reference so you can figure out which index of frames (from readFrames) in battle_model_utility.py contains which model. That lets you test specific models for specific creatures/people.)
+(This is not used by any of the code. It's a reference so you can figure out which index of frames (from readFrames) in battle_model_utility.py contains which model. That lets you test specific models for specific creatures/people.
+
+e.g. frames[3] would be mardek_child)
 
 0 BattleModelFrame frame num: 1 name: NO NAME model sprite num: 2293 animations: []
 1 BattleModelFrame frame num: 6 name: mardek model sprite num: 2364 animations: []

@@ -104,6 +104,7 @@ class ComponentSprite:
         self.depth = depth
 
         self.componentFrames = []
+        self.frameLabels = []
         self.scan_component_frames()
 
     def scan_component_frames(self):
@@ -122,6 +123,7 @@ class ComponentSprite:
                     # Label of frame (basically the name)
                     if subItem.get("type") == "FrameLabelTag":
                         label = subItem.get("name")
+                        self.frameLabels.append(label)
 
                     # The PlaceObject2Tag's characterId is the id of the DefineShape placed in this frame
                     elif subItem.get("type") == "PlaceObject2Tag":
@@ -142,32 +144,13 @@ class ComponentSprite:
                             shapeNum = -1
                 break
 
-        # self.set_matrix_bounds()
-
-    # TODO: remove?
-    # This is taken from getCharacterBounds
-    # in https://github.com/jindrapetrik/jpexs-decompiler/blob/2ddcf6880c0574a6c6cce92ab3146d8c31801fcf/libsrc/ffdec_lib/src/com/jpexs/decompiler/flash/tags/DefineSpriteTag.java
-    def set_matrix_bounds(self):
-        minX = float('inf')
-        maxX = -1
-        minY = float('inf')
-        maxY = -1
-
-        for shape in self.componentFrames:
-            if (shape.bounds["xMin"] < shape.bounds["xMax"] and shape.bounds["yMin"] < shape.bounds["yMax"]):
-                minX = min(minX, shape.bounds["xMin"])
-                maxX = max(maxX, shape.bounds["xMax"])
-                minY = min(minY, shape.bounds["yMin"])
-                maxY = max(maxY, shape.bounds["yMax"])
-
-        self.matrix.bounds = {"xMin": minX, "yMin": minY, "xMax": maxX, "yMax": maxY}
+        self.matrix.set_matrix_bounds(self)
 
     def __str__(self):
         return \
         "ComponentSprite" + \
         " sprite num: " + str(self.spriteNum) + \
         " component frame len: " + str(len(self.componentFrames)) + \
-        " bounds: " + str(self.matrix.bounds) + \
         " matrix (converted): " + str(self.matrix.convert_values())
 
     def get_json_dict(self):
@@ -175,7 +158,8 @@ class ComponentSprite:
             "transformMatrix": self.matrix.convert_values(),
             "spriteNumber": self.spriteNum,
             "depth": self.depth,
-            "shapes": [shape.get_json_dict() for shape in self.componentFrames]
+            "shapes": [shape.get_json_dict() for shape in self.componentFrames],
+            "frameLabels": self.frameLabels
         }
 
 """
@@ -198,8 +182,8 @@ class TransformMatrix:
             self.scaleX = int(matrixElement.get("scaleX"))
             self.scaleY = int(matrixElement.get("scaleY"))
         else:
-            self.scaleX = 0
-            self.scaleY = 0
+            self.scaleX = 1
+            self.scaleY = 1
 
         if matrixElement.get("hasRotate") == "true":
             self.hasRotate = True
@@ -217,7 +201,28 @@ class TransformMatrix:
 
         # xMax/yMax unnecessary (I think?)
         # xMin/yMin needed to calculate converted translateX/Y values
-        self.bounds = {"xMin": -1, "yMin": -1, "xMax": -1, "yMax": -1}
+        self.bounds = {"xMin": 0, "yMin": 0, "xMax": -1, "yMax": -1}
+
+    # TODO: remove?
+    # This is taken from getCharacterBounds
+    # in https://github.com/jindrapetrik/jpexs-decompiler/blob/2ddcf6880c0574a6c6cce92ab3146d8c31801fcf/libsrc/ffdec_lib/src/com/jpexs/decompiler/flash/tags/DefineSpriteTag.java
+    def set_matrix_bounds(self, component):
+        """
+        minX = float('inf')
+        maxX = -1
+        minY = float('inf')
+        maxY = -1
+
+        for shape in component.componentFrames:
+            if (shape.bounds["xMin"] < shape.bounds["xMax"] and shape.bounds["yMin"] < shape.bounds["yMax"]):
+                minX = min(minX, shape.bounds["xMin"])
+                maxX = max(maxX, shape.bounds["xMax"])
+                minY = min(minY, shape.bounds["yMin"])
+                maxY = max(maxY, shape.bounds["yMax"])
+
+        self.bounds = {"xMin": minX, "yMin": minY, "xMax": maxX, "yMax": maxY}
+        """
+        pass
 
     def convert_values(self):
         """
@@ -233,10 +238,6 @@ class TransformMatrix:
         EDIT: ACTUALLY I DO NOT THINK THAT IS NECESSARY, REMOVE THE BOUNDS STUFF THEN? TODO
         """
 
-        # TODO: remove?
-        # if self.bounds["xMin"] == -1 or self.bounds["yMin"] == -1:
-        #    print("WARNING! Trying to convert values for matrix without bounds! You should first call set_matrix_bounds on the associated ComponentSprite.")
-
         newScaleX = self.scaleX / pow(2, 16)
         newScaleY = self.scaleY / pow(2, 16)
 
@@ -244,15 +245,19 @@ class TransformMatrix:
         newRotateSkew0 = - self.rotateSkew0 / pow(2, 16)
         newRotateSkew1 = - self.rotateSkew1 / pow(2, 16)
 
-        newTranslateX = (globalScaleFactor) * (1/20.0) * self.translateX # * (self.translateX + self.bounds["xMin"])
-        newTranslateY = -1 * (globalScaleFactor) * (1/20.0) * self.translateY # * (self.translateY + self.bounds["yMin"])
+        # Multiply globalScaleFactor by 0.9 because otherwise elements are *too* far apart sometimes?
+        newTranslateX = globalScaleFactor * (1/20.0) * self.translateX
+        newTranslateY = -1 * globalScaleFactor  * (1/20.0) * self.translateY
 
+        """
         if self.bounds["xMin"] == float('inf') or self.bounds["yMin"] == float('inf'):
-            print("Stopgap for the 2 special sprites - ignore all nonavailable/nonstandard bounds")
+            # print("Stopgap for the 2 special sprites - ignore all nonavailable/nonstandard bounds")
             newTranslateX = 0
             newTranslateY = 0
+        """
 
-        return {"scaleX": newScaleX, "rotateSkew0": newRotateSkew0, "translateX": newTranslateX,
+        return {"hasScale": self.hasScale, "hasRotate": self.hasRotate,
+            "scaleX": newScaleX, "rotateSkew0": newRotateSkew0, "translateX": newTranslateX,
             "scaleY": newScaleY, "rotateSkew1": newRotateSkew1, "translateY": newTranslateY}
 
     def __str__(self):
@@ -418,10 +423,13 @@ class BattleModelFrame:
                                                 # print("WARNING:", subItem.get("depth"), "not in depth dict! Battle Model:", str(self), "Frame:", frameCount, "Subitem:", subItem.items())
                                                 pass
                                             else:
+                                                component = self.componentDepthDict[subItem.get("depth")]
+                                                transform = TransformMatrix(subItem[0])
+                                                transform.set_matrix_bounds(component)
                                                 cMove = ComponentInAnimationFrame(
-                                                    component = self.componentDepthDict[subItem.get("depth")],
+                                                    component = component,
                                                     depth = subItem.get("depth"),
-                                                    transform = TransformMatrix(subItem[0])
+                                                    transform = transform
                                                 )
                                                 currAnimFrame.listOfComponents.append(cMove)
 
@@ -641,11 +649,7 @@ The SVG is expected to have "Textured Sprite" as its Generated Asset Type.
 TextureSize is max(width, height) * scaleFactor
 scaleFactor was determined experimentally.
 """
-def svg_import_settings(folderName = "", scaleFactor = globalScaleFactor):
-    if folderName == "":
-        folderName = input("Enter name of folder containing exported SVGs: ")
-        print("Folder name:", folderName)
-
+def svg_import_settings(folderName = "battleModelShapes", scaleFactor = globalScaleFactor):
     for metadata in [f for f in sorted(os.listdir(folderName)) if f.endswith(".svg.meta")]:
 
         metadata = os.path.join(folderName, metadata)
@@ -690,17 +694,12 @@ def run_all():
 if __name__ == "__main__":
     DOMTree = getDOMTree("DefineSprite5118_Exported.xml")
     frames = readFrames(DOMTree)
-
-    model = frames[22]
-    model.find_model_components_and_animations(DOMTree)
-    print(model)
+    frames[72].find_model_components_and_animations(DOMTree)
+    frames[3].find_model_components_and_animations(DOMTree)
+    frames[33].find_model_components_and_animations(DOMTree)
 
     with open("test.json", "w") as f:
-        json.dump([model.get_json_dict()], f)
+        json.dump([i.get_json_dict() for i in (
+            frames[72], frames[3], frames[33]
+        )], f)
 
-    """
-    for i in forestFish.modelComponents:
-        print(i)
-        print([str(j) for j in i.componentFrames])
-        print()
-    """

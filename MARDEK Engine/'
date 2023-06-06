@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.Animations;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -19,8 +18,6 @@ namespace MARDEK.Battle
         // ModelBase prefab which all model prefabs inherit from
         public GameObject modelBasePrefab;
 
-        public GameObject modelDisplay;
-
         private static readonly string animationFolder = "Assets/Animations/BattleModelAnimations/";
         private static readonly string modelPrefabFolder = "Assets/Prefabs/BattleModels/";
 
@@ -38,14 +35,13 @@ namespace MARDEK.Battle
 
             foreach (BattleModelFrameJSON model in list)
             {
-                // Necessary setup stuff
                 Directory.CreateDirectory(animationFolder + model.name);
                 Directory.CreateDirectory(modelPrefabFolder + model.name);
+
                 foreach (ComponentJSON component in model.components)
                 {
                     model.depthDict[component.depth] = component;
                 }
-                model.FindVariableComponents();
 
                 // Filter out these 2 components because they're special and I haven't figured out
                 // how to handle them yet
@@ -72,7 +68,7 @@ namespace MARDEK.Battle
 
                 // Now create the animations
                 // GameObject modelObject = MakeModelPrefab(model);
-                MakeModelAnimations(model, savedPrefab);
+                MakeModelAnimations(model);
             }
         }
 
@@ -107,7 +103,8 @@ namespace MARDEK.Battle
             // Attach animation controller to the model prefab
             Animator animator = modelPrefab.AddComponent<Animator>();
             // Create runtime animation controller for the model prefab's animator
-            AnimatorController controller = AnimatorController.CreateAnimatorControllerAtPath(
+            RuntimeAnimatorController controller =
+                UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(
                 animationFolder + model.name + "/" + model.name + ".controller"
             );
             animator.runtimeAnimatorController = controller;
@@ -116,14 +113,53 @@ namespace MARDEK.Battle
             return modelPrefab;
         }
 
+        /* Since I can't find where the variable weapon/shield sprites are indicated by JPEXS,
+         * I will look for them myself
+         * 
+         * Returns list of componentJSONs that change depending on what item the player/monster's holding
+        */
+        private List<ComponentJSON> FindWeaponShieldComponents(BattleModelFrameJSON model)
+        {
+            List<ComponentJSON> variableComponents = new();
+
+            // Find most frequently occuring list of shape labels/variants - that is the actual variant list
+            List<List<string>> labelLists = new();
+            foreach (ComponentJSON component in model.components)
+            {
+                // If the label of the first shape is present in one of the lists already,
+                // then this list of labels is used by more than one shape
+                // and therefore should be the proper variant list
+                ShapeJSON first_shape = component.shapes[0];
+                foreach (List<string> list in labelLists)
+                {
+                    foreach (string label in list)
+                    {
+                        if (first_shape.label == label)
+                        {
+                            model.variantNames = list;
+                            return null;
+                        }
+                    }
+                }
+
+                // If the above block does not return, this label is new
+                // and so is this list; so it must be added to labelLists
+                List<string> labelList = new();
+                foreach (ShapeJSON sJSON in component.shapes)
+                {
+                    labelList.Add(sJSON.label);
+                }
+                labelLists.Add(labelList);
+            }
+        }
 
         private void MakeModelPrefabVariants(BattleModelFrameJSON model, GameObject savedPrefab)
         {
             // Create model prefab variants that actually have the sprite info
-            foreach(string variantName in model.variantNames)
+            foreach(ShapeJSON sJSON in model.components[0].shapes)
             {
                 GameObject variant = (GameObject)PrefabUtility.InstantiatePrefab(savedPrefab);
-                variant.name = variantName;
+                variant.name = sJSON.label;
 
                 // Assign the correct sprites to this variant
                 foreach (Transform component in variant.transform)
@@ -131,7 +167,8 @@ namespace MARDEK.Battle
                     ComponentJSON compInfo = model.components.Find(c => (c.gameObjectName == component.name));
                     ShapeJSON shapeInfo = compInfo.shapes.Find(s => (s.label == variant.name));
 
-                    if (!component.TryGetComponent<SpriteRenderer>(out var renderer))
+                    SpriteRenderer renderer = component.GetComponent<SpriteRenderer>();
+                    if (renderer == null)
                     {
                         Debug.Log("Component " + component.name + " has null sprite renderer!");
                     }
@@ -145,17 +182,15 @@ namespace MARDEK.Battle
                 }
 
                 string variantPath = modelPrefabFolder + model.name + "/" +
-                    variantName + "_" + model.name + ".prefab";
+                    sJSON.label + "_" + model.name + ".prefab";
                 PrefabUtility.SaveAsPrefabAsset(variant, variantPath);
             }
         }
 
         // NOTE: This will NOT WORK PROPERLY if you don't run MakeModelPrefab beforehand, because
         // that's what sets the unique names for each ComponentJSON in model.components
-        private void MakeModelAnimations(BattleModelFrameJSON model, GameObject savedPrefab)
+        private void MakeModelAnimations(BattleModelFrameJSON model)
         {
-            AnimationClip idleClip = null;
-
             foreach (AnimationJSON anim in model.animations) {
                 AnimationClip clip = new();
 
@@ -178,7 +213,64 @@ namespace MARDEK.Battle
                         // TODO add support for this stuff
                         if (componentCurves != null)
                         {
-                            componentCurves.AddKeys(compFrameInfo.transform, frame.relativeFrameNumber);
+                            Vector2 framePosition = Utility.Position(compFrameInfo.transform);
+                            Vector3 frameRotation = Utility.Rotation(compFrameInfo.transform).eulerAngles;
+                            Vector3 frameScale = Utility.Scale(compFrameInfo.transform);
+
+                            // MARDEK's animations are 30FPS by default, so (1.0 / 30.0)
+                            float frameTime = frame.relativeFrameNumber * (float) (1.0 / 30.0);
+
+                            // Make InTangent and OutTangent both 0 to disable interpolation,
+                            // after https://stackoverflow.com/questions/57566668/unity-how-to-disable-animation-interpolation-animation-curves 
+                            // Interpolation makes angles spin when they go from 0-360 (not ideal)
+                            componentCurves.translateX.AddKey(
+                                new Keyframe(frameTime, framePosition.x)
+                            );
+                            componentCurves.translateY.AddKey(
+                                new Keyframe(frameTime, framePosition.y)
+                            );
+
+                            // For the Unity 360-0 or 0-360 rotation interpolation error
+                            if (componentCurves.prevRotZ != -1)
+                            {
+                                if (componentCurves.prevRotZ > 340 && frameRotation.z < 10)
+                                {
+                                    componentCurves.circleNum++;
+                                }
+                                else if (componentCurves.prevRotZ < 10 && frameRotation.z > 340)
+                                {
+                                    componentCurves.circleNum--;
+                                }
+                            }
+                            componentCurves.prevRotZ = frameRotation.z;
+                            float actualRotZ = frameRotation.z + componentCurves.circleNum * 360;
+                            componentCurves.rotZ.AddKey(
+                                new Keyframe(frameTime, actualRotZ)
+                            );
+
+
+                            // Sometimes scale goes to 0 for one frame when it shouldn't, no clue why,
+                            // probably an artifact of the process used to get scale from the 2x3 transform matrix,
+                            // just keep track of when it happens and undo it
+                            if (Mathf.Abs(componentCurves.prevScaleX) > 0.9 &&
+                                Mathf.Abs(frameScale.x) < 0.1)
+                            {
+                                frameScale.x = componentCurves.prevScaleX;
+                            }
+                            componentCurves.scaleX.AddKey(
+                                new Keyframe(frameTime, frameScale.x)
+                            );
+                            componentCurves.prevScaleX = frameScale.x;
+
+                            if (Mathf.Abs(componentCurves.prevScaleY) > 0.9 &&
+                                Mathf.Abs(frameScale.y) < 0.1)
+                            {
+                                frameScale.y = componentCurves.prevScaleY;
+                            }
+                            componentCurves.scaleY.AddKey(
+                                new Keyframe(frameTime, frameScale.y)
+                            );
+                            componentCurves.prevScaleY = frameScale.y;
                         }
                     }
                 }
@@ -190,8 +282,8 @@ namespace MARDEK.Battle
                     // Property names from https://forum.unity.com/threads/list-of-all-property-names.192974/
                     clip.SetCurve(componentName, typeof(Transform), "localPosition.x", c.translateX);
                     clip.SetCurve(componentName, typeof(Transform), "localPosition.y", c.translateY);
-                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.x", c.rotX);
-                    clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.y", c.rotY);
+                    // clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.x", c.rotX);
+                    // clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.y", c.rotY);
                     clip.SetCurve(componentName, typeof(Transform), "localEulerAnglesRaw.z", c.rotZ);
                     clip.SetCurve(componentName, typeof(Transform), "localScale.x", c.scaleX);
                     clip.SetCurve(componentName, typeof(Transform), "localScale.y", c.scaleY);
@@ -200,37 +292,13 @@ namespace MARDEK.Battle
                 // According to the documentation, this should be called after curves are set
                 clip.EnsureQuaternionContinuity();
 
+                // Seems there is no way to set a clip to loop automatically with code
+                // TODO add workaround: make all the clips transition back to each other in the animator
+                // https://stackoverflow.com/questions/57913717/how-to-set-looping-for-animation-clip-in-script
+
                 string anim_name = anim.name + "_" + model.name + ".anim";
                 AssetDatabase.CreateAsset(clip,
                     animationFolder + model.name + "/" + anim_name);
-                if (anim.name == "idle")
-                {
-                    idleClip = clip;
-                }
-            }
-
-            if (savedPrefab != null)
-            {
-                if (!savedPrefab.TryGetComponent<Animator>(out var animator))
-                {
-                    Debug.Log("Model " + model.name + " has no animator!");
-                }
-                else
-                {
-                    AnimatorController controller =
-                        (AnimatorController) animator.runtimeAnimatorController;
-                    if (idleClip == null)
-                    {
-                        Debug.Log("Model " + model.name + " has no idle animation!");
-                    }
-                    else {
-                        AnimatorState idleState = controller.AddMotion(idleClip);
-                        // ... TODO disable - you cannot set Loop=true and LoopPose=true automatically
-                        // through code, so this is a temp stopgap solution
-                        AnimatorStateTransition transition = idleState.AddTransition(idleState, true);
-                        transition.exitTime = idleClip.length;
-                    }
-                }
             }
         }
 
@@ -263,58 +331,6 @@ namespace MARDEK.Battle
             // Not part of the JSON - used to store names of the variants of this model
             // (the creatures/sprite swaps that use this model, basically)
             public List<string> variantNames;
-            // Similarly, used to store names of components that change depending on
-            // what item (weapon/shield/etc) the model's holding
-            public List<ComponentJSON> variableComponents = new();
-
-            /* Since I can't find where the variable weapon/shield sprites are indicated by JPEXS,
-             * I will look for them myself
-             * 
-             * Returns list of componentJSONs that change depending on what item the player/monster's holding
-            */
-            public void FindVariableComponents()
-            {
-                List<ComponentJSON> componentsWithFrameLabels = this.components.FindAll(c => c.frameLabels.Count > 0);
-
-                // Find most frequently occuring list of shape labels/variants - that is the actual variant list
-                List<List<string>> labelLists = new();
-                foreach (ComponentJSON component in componentsWithFrameLabels)
-                {
-                    // If any of its frameLabels (we're using the first) is present in one of the lists already,
-                    // then this list of labels is used by more than one shape
-                    // and therefore should be the proper variant list
-                    string first_label = component.frameLabels[0];
-                    foreach (List<string> list in labelLists)
-                    {
-                        foreach (string label in list)
-                        {
-                            if (first_label == label)
-                            {
-                                this.variantNames = list;
-
-                                foreach (ComponentJSON c in componentsWithFrameLabels)
-                                {
-                                    // if c's first frame label is not in the variable names list,
-                                    // then the label belongs to a different label list
-                                    // meaning the component is a weapon/shield component
-                                    if (this.variantNames.Find(s => s == c.frameLabels[0]) == null)
-                                    {
-                                        this.variableComponents.Add(c);
-                                    }
-                                }
-                                return;
-                            }
-                        }
-                    }
-
-                    // If the above block does not return, this label is new
-                    // and so is this list; so it must be added to labelLists
-                    labelLists.Add(component.frameLabels);
-                }
-
-                Debug.Log("Model " + this.name + " set variantNames/find variable components failed! " +
-                    "You should not reach this point!");
-            }
         }
 
         private class ComponentJSON
@@ -323,7 +339,6 @@ namespace MARDEK.Battle
             [SerializeField] public string spriteNumber;
             [SerializeField] public string depth;
             [SerializeField] public List<ShapeJSON> shapes;
-            [SerializeField] public List<string> frameLabels;
 
             // Used to store unique name for each component, since animations are based on
             // gameObject names meaning all components must have different names
@@ -332,8 +347,6 @@ namespace MARDEK.Battle
 
         private class TransformJSON
         {
-            [SerializeField] public bool hasScale;
-            [SerializeField] public bool hasRotate;
             [SerializeField] public float scaleX;
             [SerializeField] public float rotateSkew0;
             [SerializeField] public float translateX;
@@ -381,8 +394,8 @@ namespace MARDEK.Battle
 
             public AnimationCurve translateX;
             public AnimationCurve translateY;
-            public AnimationCurve rotX;
-            public AnimationCurve rotY;
+            // public AnimationCurve rotX;
+            // public AnimationCurve rotY;
             public AnimationCurve rotZ;
             public AnimationCurve scaleX;
             public AnimationCurve scaleY;
@@ -401,84 +414,14 @@ namespace MARDEK.Battle
 
                 translateX = new();
                 translateY = new();
-                rotX = new();
-                rotY = new();
+                // rotX = new();
+                // rotY = new();
                 rotZ = new();
                 scaleX = new();
                 scaleY = new();
 
                 prevRotZ = -1;
                 circleNum = 0;
-            }
-
-            public void AddKeys(TransformJSON frameTransform, int relativeFrameNumber)
-            {
-                Vector2 framePosition = Utility.Position(frameTransform);
-                Vector3 frameRotation = Utility.Rotation(frameTransform).eulerAngles;
-                Vector3 frameScale = Utility.Scale(frameTransform);
-
-                // MARDEK's animations are 30FPS by default, so (1.0 / 30.0)
-                float frameTime = relativeFrameNumber * (float) (1.0 / 30.0);
-
-                this.translateX.AddKey(
-                    new Keyframe(frameTime, framePosition.x)
-                );
-                this.translateY.AddKey(
-                    new Keyframe(frameTime, framePosition.y)
-                );
-
-                if (frameTransform.hasRotate)
-                {
-                    this.rotX.AddKey(
-                        new Keyframe(frameTime, frameRotation.x)
-                    );
-                    this.rotY.AddKey(
-                        new Keyframe(frameTime, frameRotation.y)
-                    );
-
-                    // For the Unity 360-0 or 0-360 rotation interpolation error
-                    // Track when that happens, change angles accordingly
-                    float rotZ = frameRotation.z;
-                    if (this.prevRotZ != -1)
-                    {
-                        if (this.prevRotZ > 340 && rotZ < 10)
-                        {
-                            this.circleNum++;
-                        }
-                        else if (this.prevRotZ < 10 && rotZ > 340)
-                        {
-                            this.circleNum--;
-                        }
-                    }
-                    this.prevRotZ = rotZ;
-                    float actualRotZ = rotZ + this.circleNum * 360;
-                    this.rotZ.AddKey(
-                        new Keyframe(frameTime, actualRotZ)
-                    );
-                }
-
-                // Defaults to scaleX, scaleY = 1 if there's no hasScale
-                // Have to do it this way because the frameScale calculations 
-                // mess with the (scale=(1, 1) if not hasScale) from the Python code
-                if (frameTransform.hasScale)
-                {
-                    this.scaleX.AddKey(
-                        new Keyframe(frameTime, frameScale.x)
-                    );
-                    this.scaleY.AddKey(
-                        new Keyframe(frameTime, frameScale.y)
-                    );
-                }
-                else
-                {
-                    this.scaleX.AddKey(
-                        new Keyframe(frameTime, 1)
-                    );
-                    this.scaleY.AddKey(
-                        new Keyframe(frameTime, 1)
-                    );
-
-                }
             }
         }
 
@@ -491,6 +434,10 @@ namespace MARDEK.Battle
              * scaleX rotateSkew1 translateX
              * rotateSkew0 scaleY translateY
              */
+
+            // Based on https://math.stackexchange.com/questions/13150/extracting-rotation-scale-values-from-2d-transformation-matrix?noredirect=1&lq=1 
+            // NOTE: THIS IS IMPERFECT BECAUSE IT DOES NOT WORK FOR SKEW
+            // The Unity Transform component does not support skew
             public static Quaternion Rotation(TransformJSON t)
             {
                 // The Math StackExchange link above provides rotation as a single angle
@@ -551,33 +498,6 @@ namespace MARDEK.Battle
                     (float) qx, (float) qy, (float) qz, (float) qw);
                 return rot;
             }
-
-            /*
-            // DO NOT USE - it doesn't work
-            // Based on https://math.stackexchange.com/questions/13150/extracting-rotation-scale-values-from-2d-transformation-matrix?noredirect=1&lq=1 
-            // NOTE: THIS IS IMPERFECT BECAUSE IT DOES NOT WORK FOR SKEW
-            // The Unity Transform component does not support skew
-            public static float RotZ(TransformJSON t)
-            {
-                // From http://stackoverflow.com/a/4361442/380384
-                if (t.scaleY == 0)
-                {
-                    if (t.scaleX == 0)
-                    {
-                        return 0;
-                    }
-                    else
-                    {
-                        return Mathf.Atan(-t.rotateSkew1 / t.scaleX) * Mathf.Rad2Deg;
-                    }
-                }
-                else
-                {
-                    return Mathf.Atan(t.rotateSkew0 / t.scaleY) * Mathf.Rad2Deg;
-                }
-            }
-            */
-
             public static Vector3 Scale(TransformJSON t)
             {
                 // Giving the scales the sign of scaleX, scaleY allows for negative scales
